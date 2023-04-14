@@ -25,6 +25,7 @@ def get_binary_image(cap, cv2):
     if not ret:
         return None
 
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(gray, (5, 5), 0)
     _, binary = cv2.threshold(blur, 135, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
