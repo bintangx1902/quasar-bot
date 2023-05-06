@@ -15,10 +15,10 @@ if cap.isOpened():
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps = cap.get(cv2.CAP_PROP_FPS)
 
-thresh = .6
+thresh = .4
 
-model = keras.models.load_model(r'C:\Users\binta\Desktop\raw\model\SAR-terrain-v2.h5')
-labels = ['GOOD', 'RETAK', 'TANGGA']
+# model = keras.models.load_model(r'C:\Users\binta\Desktop\raw\model\SAR-terrain-v2.h5')
+# labels = ['GOOD', 'RETAK', 'TANGGA']
 
 while True:
     # _, frame = cap.read()
@@ -34,45 +34,45 @@ while True:
     # print(conv)
 
     """ machine learning """
-    frame_resized = cv2.resize(frame, (192, 255))
-    frame_normalized = frame_resized / 255.0
-    frame_expanded = tf.expand_dims(frame_normalized, axis=0)
-    predictions = model.predict(frame_expanded)
+    # frame_resized = cv2.resize(frame, (192, 255))
+    # frame_normalized = frame_resized / 255.0
+    # frame_expanded = tf.expand_dims(frame_normalized, axis=0)
+    # predictions = model.predict(frame_expanded)
 
-    box_x, box_y, box_w, box_h, class_index = postprocess_outputs(predictions, np)
+    # box_x, box_y, box_w, box_h, class_index = postprocess_outputs(predictions, np)
 
     class_label = None
-    class_label = labels[class_index] if class_label is not None else None
+    # class_label = labels[class_index] if class_label is not None else None
 
-    frame_with_box = draw_box(frame, box_x, box_y, box_w, box_h, class_label, cv2)
+    # frame_with_box = draw_box(frame, box_x, box_y, box_w, box_h, class_label, cv2)
 
-    if class_label in labels:
-        move_forward()
-        if ((conv[1, :2] < thresh).all() and conv[0, :1] < thresh) or (conv[0, :1] < thresh and conv[1, :1] < thresh):
-            """ move left will be ignored if the condition of angled left acceptable """
-            if ((conv[0, :2] < thresh).all() and (conv[1, :] < thresh).all()) or \
-                    (conv[0, :1] < thresh and (conv[1, :] < thresh).all):
-                move_angled_left()
-            else:
-                move_left()
-        elif (np.array_equal(conv[0, :] < thresh, [False, False, True]) and
-              np.array_equal(conv[1, :] < thresh, [False, True, True])) \
-                or (np.array_equal(conv[0, :] < thresh, [False, False, True]) or
-                    np.array_equal(conv[1, :] < thresh, [False, False, True])):
-            if ((conv[0, 1:3] < thresh).all() and (conv[1, :] < thresh).all()) or \
-                    (conv[0, 2:3] < thresh or (conv[1, :] < thresh).all()) or \
-                    (conv[0, 1:3] < thresh).all() or (conv[1, 1:3]).all():
-                move_angled_right()
-            else:
-                move_right()
-
-        elif ((conv[0, :] < thresh).all() and (conv[1, :] < thresh).all()) or \
-                ((conv[1, :]).all() and np.array_equal(conv[0, :], [False, True, False])) or \
-                (conv[1, :] < thresh).all() or ((conv[0, :] < thresh)[1] and (conv[1, :] < thresh)[1]) or \
-                (conv[1, :] < thresh)[1]:
-            move_forward()
+    # if class_label in labels:
+    #     move_forward()
+    if ((conv[1, :2] < thresh).all() and conv[0, :1] < thresh) or (conv[0, :1] < thresh and conv[1, :1] < thresh):
+        """ move left will be ignored if the condition of angled left acceptable """
+        if ((conv[0, :2] < thresh).all() and (conv[1, :] < thresh).all()) or \
+                (conv[0, :1] < thresh and (conv[1, :] < thresh).all):
+            move_angled_left()
         else:
-            stop()
+            move_left()
+    elif (np.array_equal(conv[0, :] < thresh, [False, False, True]) and
+          np.array_equal(conv[1, :] < thresh, [False, True, True])) \
+            or (np.array_equal(conv[0, :] < thresh, [False, False, True]) or
+                np.array_equal(conv[1, :] < thresh, [False, False, True])):
+        if ((conv[0, 1:3] < thresh).all() and (conv[1, :] < thresh).all()) or \
+                (conv[0, 2:3] < thresh or (conv[1, :] < thresh).all()) or \
+                (conv[0, 1:3] < thresh).all() or (conv[1, 1:3]).all():
+            move_angled_right()
+        else:
+            move_right()
+
+    elif ((conv[0, :] < thresh).all() and (conv[1, :] < thresh).all()) or \
+            ((conv[1, :]).all() and np.array_equal(conv[0, :], [False, True, False])) or \
+            (conv[1, :] < thresh).all() or ((conv[0, :] < thresh)[1] and (conv[1, :] < thresh)[1]) or \
+            (conv[1, :] < thresh)[1]:
+        move_forward()
+    else:
+        stop()
 
     # if (conv[1, :] < THRESH).all() and (conv[0, :] < THRESH)[1]:
     #     move_forward()
