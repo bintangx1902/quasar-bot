@@ -28,8 +28,8 @@ human_labels = ['BAGUS', 'HUMAN']
 rotation_servo_pos = 0
 is_pinched = False
 
-orange_lower = (0, 50, 50)
-orange_upper = (20, 240, 240)
+orange_lower = (0, 50, 80)
+orange_upper = (20, 240, 255)
 
 while True:
     # _, frame = cap.read()
@@ -41,23 +41,24 @@ while True:
     if binary is None:
         break
 
-    contours = find_contours(frame, cv2, orange_lower, orange_upper)
+    contours, mask = find_contours(frame, cv2, orange_lower, orange_upper)
     conv = frame_conv_opt(binary, 2, 3)
     # print(conv)
 
     """ machine learning """
     frame_resized = cv2.resize(frame, (192, 255))
     frame_normalized = frame_resized / 255.0
-    frame_expanded = tf.expand_dims(frame_normalized, axis=0)
+    # frame_expanded = tf.expand_dims(frame_normalized, axis=0)
+    frame_expanded = np.expand_dims(frame_normalized, axis=0)
     human_predictions = human_model.predict(frame_expanded)
-    terrain_predictions = terrain_model.predict(frame_expanded)
+    # terrain_predictions = terrain_model.predict(frame_expanded)
 
-    box_x, box_y, box_w, box_h, class_index_terain = postprocess_outputs(terrain_predictions, np)
+    # box_x, box_y, box_w, box_h, class_index_terain = postprocess_outputs(terrain_predictions, np)
     *_, class_index_human = postprocess_outputs(human_predictions, np)
 
     terrain_label, human_label = None, None
-    terrain_label = terrain_labels[class_index_terain] if class_index_terain is not None else None
-    human_label = human_labels[class_index_human] if class_index_human is not None else None
+    # terrain_label = terrain_labels[class_index_terain] if class_index_terain else None
+    human_label = human_labels[class_index_human] if class_index_human else None
     # frame_with_box = draw_box(frame, box_x, box_y, box_w, box_h, class_label, cv2)
 
     if human_label == 'HUMAN':
@@ -71,11 +72,11 @@ while True:
 
         # do_movement(conv, thresh)
         # rotation_servo_pos = camera_claw_move(rotation_servo_pos)
-        camera_claw_move(0, contours, cv2, width)
-
-        # if rotation_servo_pos == 90 or rotation_servo_pos == 270:
-        #     """ stop movement """
-        #     claw_human()
+        rotation_servo_pos, pos_str = camera_claw_move(rotation_servo_pos, contours, cv2, width)
+        print(rotation_servo_pos)
+        if (rotation_servo_pos == 90 or rotation_servo_pos == -90) and pos_str == 'center':
+            """ stop movement """
+            claw_human()
         #     if is_pinched:
         #         rotation_servo_pos = camera_claw_move(0)
         #         do_movement()
@@ -126,6 +127,7 @@ while True:
 
     cv2.imshow("Real Footage", frame)
     cv2.imshow("Binary Footage", binary)
+    cv2.imshow('mask Footage', mask)
 
     if cv2.waitKey(1) == ord('q') or cv2.waitKey(1) == ord('c'):
         break

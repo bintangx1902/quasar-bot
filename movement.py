@@ -175,11 +175,15 @@ def center():
 
 
 def find_contours(frame, cv2, lower, upper):
-    mask = cv2.inRange(frame, lower, upper)
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(hsv, lower, upper)
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    return contours
+    return contours, mask
+
 
 def camera_claw_move(current_position, contours, cv2, camera_width):
+    pos = current_position
+    pos_str = ''
     if len(contours) > 0:
         max_contour = max(contours, key=cv2.contourArea)
         M = cv2.moments(max_contour)
@@ -190,13 +194,24 @@ def camera_claw_move(current_position, contours, cv2, camera_width):
         center_x = int(M)
         if 180 <= center_x <= 330:
             center()
+            pos_str = 'center'
         elif center_x < camera_width // 2:
             rotate_counter_clockwise()
+            pos -= 1
         else:
+            pos += 1
             rotate_clockwise()
+
+        if pos >= 90:
+            pos = 90
+        elif pos <= -90:
+            pos = -90
+
     else:
         stop_rotation()
 
+    return pos, pos_str
+
 
 def claw_human():
-    pass
+    print('capit')
