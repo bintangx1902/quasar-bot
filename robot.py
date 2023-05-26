@@ -7,8 +7,8 @@ import tensorflow as tf
 from tensorflow import keras
 import keras
 
-# cap = cv2.VideoCapture(0)
-cap = cv2.VideoCapture(r'./dataset/train2.mp4')
+cap = cv2.VideoCapture(0)
+# cap = cv2.VideoCapture(r'./dataset/train2.mp4')
 
 if cap.isOpened():
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -17,8 +17,19 @@ if cap.isOpened():
 
 thresh = .4
 
-# model = keras.models.load_model(r'C:\Users\binta\Desktop\raw\model\SAR-terrain-v2.h5')
-# labels = ['GOOD', 'RETAK', 'TANGGA']
+terrain_model_path = r'C:\a-dev\competition\model\model-baik.h5'
+human_model_path = r'C:\a-dev\competition\model\model-orang.h5'
+terrain_model = keras.models.load_model(terrain_model_path)
+human_model = keras.models.load_model(human_model_path)
+
+terrain_labels = ['RETAKAN', 'BAGUS', 'ANAK_TANGGA']
+human_labels = ['BAGUS', 'HUMAN']
+
+rotation_servo_pos = 0
+is_pinched = False
+
+orange_lower = (0, 50, 50)
+orange_upper = (20, 240, 240)
 
 while True:
     # _, frame = cap.read()
@@ -30,49 +41,45 @@ while True:
     if binary is None:
         break
 
+    contours = find_contours(frame, cv2, orange_lower, orange_upper)
     conv = frame_conv_opt(binary, 2, 3)
     # print(conv)
 
     """ machine learning """
-    # frame_resized = cv2.resize(frame, (192, 255))
-    # frame_normalized = frame_resized / 255.0
-    # frame_expanded = tf.expand_dims(frame_normalized, axis=0)
-    # predictions = model.predict(frame_expanded)
+    frame_resized = cv2.resize(frame, (192, 255))
+    frame_normalized = frame_resized / 255.0
+    frame_expanded = tf.expand_dims(frame_normalized, axis=0)
+    human_predictions = human_model.predict(frame_expanded)
+    terrain_predictions = terrain_model.predict(frame_expanded)
 
-    # box_x, box_y, box_w, box_h, class_index = postprocess_outputs(predictions, np)
+    box_x, box_y, box_w, box_h, class_index_terain = postprocess_outputs(terrain_predictions, np)
+    *_, class_index_human = postprocess_outputs(human_predictions, np)
 
-    class_label = None
-    # class_label = labels[class_index] if class_label is not None else None
-
+    terrain_label, human_label = None, None
+    terrain_label = terrain_labels[class_index_terain] if class_index_terain is not None else None
+    human_label = human_labels[class_index_human] if class_index_human is not None else None
     # frame_with_box = draw_box(frame, box_x, box_y, box_w, box_h, class_label, cv2)
 
-    # if class_label in labels:
-    #     move_forward()
-    if ((conv[1, :2] < thresh).all() and conv[0, :1] < thresh) or (conv[0, :1] < thresh and conv[1, :1] < thresh):
-        """ move left will be ignored if the condition of angled left acceptable """
-        if ((conv[0, :2] < thresh).all() and (conv[1, :] < thresh).all()) or \
-                (conv[0, :1] < thresh and (conv[1, :] < thresh).all):
-            move_angled_left()
-        else:
-            move_left()
-    elif (np.array_equal(conv[0, :] < thresh, [False, False, True]) and
-          np.array_equal(conv[1, :] < thresh, [False, True, True])) \
-            or (np.array_equal(conv[0, :] < thresh, [False, False, True]) or
-                np.array_equal(conv[1, :] < thresh, [False, False, True])):
-        if ((conv[0, 1:3] < thresh).all() and (conv[1, :] < thresh).all()) or \
-                (conv[0, 2:3] < thresh or (conv[1, :] < thresh).all()) or \
-                (conv[0, 1:3] < thresh).all() or (conv[1, 1:3]).all():
-            move_angled_right()
-        else:
-            move_right()
+    if human_label == 'HUMAN':
+        """ 
+        1. maju sampai rotasi motor 90 atau 270 derajat
+        2. apabila sudah sampai maka stop movement
+        3. gerakan capit
+        4. apabila tidak sampai maka geser ke arah
+        5. capit dan naikan
+        """
 
-    elif ((conv[0, :] < thresh).all() and (conv[1, :] < thresh).all()) or \
-            ((conv[1, :]).all() and np.array_equal(conv[0, :], [False, True, False])) or \
-            (conv[1, :] < thresh).all() or ((conv[0, :] < thresh)[1] and (conv[1, :] < thresh)[1]) or \
-            (conv[1, :] < thresh)[1]:
-        move_forward()
-    else:
-        stop()
+        # do_movement(conv, thresh)
+        # rotation_servo_pos = camera_claw_move(rotation_servo_pos)
+        camera_claw_move(0, contours, cv2, width)
+
+        # if rotation_servo_pos == 90 or rotation_servo_pos == 270:
+        #     """ stop movement """
+        #     claw_human()
+        #     if is_pinched:
+        #         rotation_servo_pos = camera_claw_move(0)
+        #         do_movement()
+
 
     # if (conv[1, :] < THRESH).all() and (conv[0, :] < THRESH)[1]:
     #     move_forward()

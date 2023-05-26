@@ -25,7 +25,7 @@ def get_binary_image(cap, cv2):
     if not ret:
         return None
 
-    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(gray, (5, 5), 0)
     _, binary = cv2.threshold(blur, 135, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
@@ -122,3 +122,81 @@ def frame_conv_opt(binary, y_cut, x_cut):
             conv[count][in_count] = avg
 
     return conv
+
+
+def do_movement(conv, thresh):
+    if ((conv[1, :2] < thresh).all() and conv[0, :1] < thresh) or (conv[0, :1] < thresh and conv[1, :1] < thresh):
+        """ move left will be ignored if the condition of angled left acceptable """
+        if ((conv[0, :2] < thresh).all() and (conv[1, :] < thresh).all()) or \
+                (conv[0, :1] < thresh and (conv[1, :] < thresh).all):
+            move_angled_left()
+        else:
+            move_left()
+    elif (np.array_equal(conv[0, :] < thresh, [False, False, True]) and
+          np.array_equal(conv[1, :] < thresh, [False, True, True])) \
+            or (np.array_equal(conv[0, :] < thresh, [False, False, True]) or
+                np.array_equal(conv[1, :] < thresh, [False, False, True])):
+        if ((conv[0, 1:3] < thresh).all() and (conv[1, :] < thresh).all()) or \
+                (conv[0, 2:3] < thresh or (conv[1, :] < thresh).all()) or \
+                (conv[0, 1:3] < thresh).all() or (conv[1, 1:3]).all():
+            move_angled_right()
+        else:
+            move_right()
+
+    elif ((conv[0, :] < thresh).all() and (conv[1, :] < thresh).all()) or \
+            ((conv[1, :]).all() and np.array_equal(conv[0, :], [False, True, False])) or \
+            (conv[1, :] < thresh).all() or ((conv[0, :] < thresh)[1] and (conv[1, :] < thresh)[1]) or \
+            (conv[1, :] < thresh)[1]:
+        move_forward()
+    else:
+        stop()
+
+
+def rotate_clockwise():
+    # GPIO.output(motor_pin1, GPIO.HIGH)
+    # GPIO.output(motor_pin2, GPIO.LOW)
+    print('kanan')
+
+
+def rotate_counter_clockwise():
+    # GPIO.output(motor_pin1, GPIO.LOW)
+    # GPIO.output(motor_pin2, GPIO.HIGH)
+    print('kiri')
+
+
+def stop_rotation():
+    # GPIO.output(motor_pin1, GPIO.LOW)
+    # GPIO.output(motor_pin2, GPIO.LOW)
+    pass
+
+
+def center():
+    print('center')
+
+
+def find_contours(frame, cv2, lower, upper):
+    mask = cv2.inRange(frame, lower, upper)
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    return contours
+
+def camera_claw_move(current_position, contours, cv2, camera_width):
+    if len(contours) > 0:
+        max_contour = max(contours, key=cv2.contourArea)
+        M = cv2.moments(max_contour)
+        if not M['m10'] or not M['m00']:
+            M = 0
+        else:
+            M = M['m10'] / M['m00']
+        center_x = int(M)
+        if 180 <= center_x <= 330:
+            center()
+        elif center_x < camera_width // 2:
+            rotate_counter_clockwise()
+        else:
+            rotate_clockwise()
+    else:
+        stop_rotation()
+
+
+def claw_human():
+    pass

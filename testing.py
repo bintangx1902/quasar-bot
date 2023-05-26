@@ -59,7 +59,94 @@
 # cv2.destroyAllWindows()
 
 
-import serial
+# import serial
+#
+# ser = serial.Serial('/dev/ttyACM0', 9600)
+# ser.write(b'some_command')
 
-ser = serial.Serial('/dev/ttyACM0', 9600)
-ser.write(b'some_command')
+import cv2
+import time
+# import RPi.GPIO as GPIO
+import numpy as np
+
+# Set GPIO mode
+# GPIO.setmode(GPIO.BCM)
+
+# Set motor pins
+# motor_pin1 = 18  # Motor Pin 1
+# motor_pin2 = 23  # Motor Pin 2
+
+# Set GPIO motor pins as output
+# GPIO.setup(motor_pin1, GPIO.OUT)
+# GPIO.setup(motor_pin2, GPIO.OUT)
+
+# Set color threshold for orange (adjust the values as needed)
+orange_lower = (0, 50, 50)
+orange_upper = (20, 240, 240)
+
+# Set camera properties
+camera_width = 640
+camera_height = 480
+
+# Initialize the camera
+cap = cv2.VideoCapture(0)
+cap.set(3, camera_width)
+cap.set(4, camera_height)
+
+
+# Define motor control functions
+def rotate_clockwise():
+    # GPIO.output(motor_pin1, GPIO.HIGH)
+    # GPIO.output(motor_pin2, GPIO.LOW)
+    print('kanan')
+
+
+def rotate_counter_clockwise():
+    # GPIO.output(motor_pin1, GPIO.LOW)
+    # GPIO.output(motor_pin2, GPIO.HIGH)
+    print('kiri')
+
+
+def stop_rotation():
+    # GPIO.output(motor_pin1, GPIO.LOW)
+    # GPIO.output(motor_pin2, GPIO.LOW)
+    pass
+
+
+def center():
+    print('center')
+
+
+# Main loop
+while True:
+    ret, frame = cap.read()
+    # hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(frame, orange_lower, orange_upper)
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if len(contours) > 0:
+        max_contour = max(contours, key=cv2.contourArea)
+        M = cv2.moments(max_contour)
+        if not M['m10'] or not M['m00']:
+            M = 0
+        else:
+            M = M['m10'] / M['m00']
+        center_x = int(M)
+        if 180 <= center_x <= 330:
+            center()
+        elif center_x < camera_width // 2:
+            rotate_counter_clockwise()
+        else:
+            rotate_clockwise()
+    else:
+        stop_rotation()
+
+    cv2.imshow('Frame', frame)
+    cv2.imshow('Mask', mask)
+
+    # time.sleep(1)
+
+    if cv2.waitKey(1) == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()
